@@ -41,7 +41,7 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         damping.bottomRightCorner(3, 3) << 2.0 * sqrt(motion.rotational_stiffness) * Eigen::MatrixXd::Identity(3, 3);
 
         initial_state = robot->readOnce();
-        *model = robot->loadModel();
+        model = new franka::Model(robot->loadModel());
 
         initial_affine = Affine(initial_state.O_T_EE);
         position_d = Eigen::Vector3d(initial_affine.translation());
