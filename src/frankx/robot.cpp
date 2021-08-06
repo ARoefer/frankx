@@ -28,6 +28,10 @@ void Robot::setDefaultBehavior() {
 //           0, 1, 0, 0,
 //           0, 0, 1, 0,
 //           0, 0, 0, 1});
+        setEE({1, 0, 0, 0,
+           0, -1, 0, 0,
+           0, 0, -1, 0,
+           0, 0, 0, 1});
 }
 
 void Robot::setDynamicRel(double dynamic_rel) {
