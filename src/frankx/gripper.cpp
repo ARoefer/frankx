@@ -1,5 +1,6 @@
 #include <frankx/gripper.hpp>
-
+#include <chrono>
+#include <thread>
 
 namespace frankx {
 
@@ -41,12 +42,35 @@ bool Gripper::move(double width) { // [m]
 }
 
 bool Gripper::move_unsafe(double width) { // [m]
-  const bool result_stop = ((franka::Gripper*) this)->stop();
-  return ((franka::Gripper*) this)->move(width - width_calibration, gripper_speed); // [m] [m/s]
+  try {
+    // std::cout << "move unsafe frankx" << std::endl;
+    const bool result_stop = ((franka::Gripper*) this)->stop();
+  } catch (franka::Exception const& e) {
+    std::cout << "move unsafe stop exception:" << e.what() << std::endl;
+    return false;
+  }
+  try {
+    return ((franka::Gripper*) this)->move(width - width_calibration, gripper_speed); // [m] [m/s]
+  } 
+  catch (franka::Exception const& e) {
+    std::cout << "move exception:" << e.what() << std::endl;
+    return false;
+  }
 }
 
-std::future<bool> Gripper::moveAsync(double width) { // [m]
-  return std::async(std::launch::async, &Gripper::move, this, width - width_calibration);
+void Gripper::moveAsync(double width) { // [m]
+  
+  while (true) {
+    std::cout << 1 << std::endl;
+    std::future<bool> result = std::async(std::launch::async, &Gripper::move_unsafe, this, 0.01);
+    std::cout << 2 << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::cout << 3 << std::endl;
+    result.~future();  // Explicityly call destructur
+    std::cout << 4 << std::endl;
+    result = std::async(std::launch::async, &Gripper::move_unsafe, this, 0.08);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
 }
 
 bool Gripper::open() {
@@ -54,9 +78,24 @@ bool Gripper::open() {
 }
 
 bool Gripper::clamp() {
-  const bool success = grasp(min_width, gripper_speed, gripper_force, min_width, 1.0); // [m] [m/s] [N] [m] [m]
-  last_clamp_width = width();
-  return success;
+  try {
+    // std::cout << "clamp frankx" << std::endl;
+    const bool result_stop = ((franka::Gripper*) this)->stop();
+  } catch (franka::Exception const& e) {
+    // std::cout << "clamp stop exception:" << e.what() << std::endl;
+    return false;
+  }
+  try {
+    const bool success = grasp(min_width, gripper_speed, gripper_force, min_width, 1.0); // [m] [m/s] [N] [m] [m]
+    last_clamp_width = width();
+    if (!success) {
+      return ((franka::Gripper*) this)->stop();
+    }
+    return success;
+  } catch (franka::Exception const& e) {
+    // std::cout << "clamp exception:" << e.what() << std::endl;
+    return false;
+  }
 }
 
 bool Gripper::clamp(double min_clamping_width) {

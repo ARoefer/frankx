@@ -11,8 +11,8 @@
 namespace frankx {
 
 class Gripper: public franka::Gripper {
-    const double width_calibration {0.004}; // [m], Difference from gripper jaws
-    const double min_width {0.002}; // [m]
+    const double width_calibration {0.0}; // [m], Difference from gripper jaws
+    const double min_width {0.0}; // [m]
 
     /**
     * Save clamp width and compare it in the is_grasping method. If it's smaller,
@@ -37,7 +37,7 @@ public:
 
     bool move(double width); // [m]
     bool move_unsafe(double width); // [m]
-    std::future<bool> moveAsync(double width); // [m]
+    void moveAsync(double width); // [m]
 
     bool open();
     bool clamp();

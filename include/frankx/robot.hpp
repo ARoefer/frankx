@@ -22,6 +22,7 @@
 #include <frankx/motion_joint_generator.hpp>
 #include <frankx/motion_path_generator.hpp>
 #include <frankx/motion_waypoint_generator.hpp>
+#include <frankx/motion_joint_waypoint_generator.hpp>
 
 
 namespace frankx {
@@ -86,8 +87,11 @@ public:
     bool move(const Affine& frame, ImpedanceMotion& motion);
     bool move(const Affine& frame, ImpedanceMotion& motion, MotionData& data);
 
-    bool move(JointMotion motion);
-    bool move(JointMotion motion, MotionData& data);
+    bool move(JointMotion& motion);
+    bool move(JointMotion& motion, MotionData& data);
+
+    bool move(JointWaypointMotion& motion);
+    bool move(JointWaypointMotion& motion, MotionData& data);
 
     bool move(PathMotion motion);
     bool move(PathMotion motion, MotionData& data);

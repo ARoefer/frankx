@@ -60,6 +60,7 @@ public:
     Affine target;
     bool is_active {false};
     bool should_finish {false};
+    franka::RobotState current_state;
 
     explicit ImpedanceMotion() { }
     explicit ImpedanceMotion(double joint_stiffness): joint_stiffness(joint_stiffness), type(Type::Joint) { }
@@ -117,6 +118,18 @@ public:
 
     void finish() {
         should_finish = true;
+    }
+
+    void setRobotState(const franka::RobotState& robot_state) {    
+        current_state = robot_state;
+    }
+
+    franka::RobotState getRobotState() {
+        return current_state;
+    }
+
+    Affine currentPose(const Affine& frame) {
+        return Affine(current_state.O_T_EE) * frame;
     }
 };
 

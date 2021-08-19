@@ -19,7 +19,7 @@ void Robot::setDefaultBehavior() {
         {{30.0, 30.0, 30.0, 30.0, 30.0, 30.0}}
     );
 
-    // setJointImpedance({{3000, 3000, 3000, 2500, 2500, 2000, 2000}});
+    // setJointImpedance({{300, 300, 300, 250, 250, 200, 200}});
     // setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
 
     // libfranka 0.8 split F_T_EE into F_T_NE (set in desk to value below) and NE_T_EE which defaults to identity
@@ -98,13 +98,31 @@ bool Robot::move(const Affine& frame, ImpedanceMotion& motion, MotionData& data)
 }
 
 
-bool Robot::move(JointMotion motion) {
+bool Robot::move(JointMotion& motion) {
     auto data = MotionData();
     return move(motion, data);
 }
 
-bool Robot::move(JointMotion motion, MotionData& data) {
+bool Robot::move(JointMotion& motion, MotionData& data) {
     JointMotionGenerator<Robot> mg {this, motion, data};
+
+    try {
+        control(stateful<franka::JointPositions>(mg));
+
+    } catch (franka::Exception exception) {
+        std::cout << exception.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool Robot::move(JointWaypointMotion& motion) {
+    auto data = MotionData();
+    return move(motion, data);
+}
+
+bool Robot::move(JointWaypointMotion& motion, MotionData& data) {
+    JointWaypointMotionGenerator<Robot> mg {this, motion, data};
 
     try {
         control(stateful<franka::JointPositions>(mg));

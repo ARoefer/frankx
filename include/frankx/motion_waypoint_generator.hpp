@@ -85,8 +85,21 @@ struct WaypointMotionGenerator: public MotionGenerator {
 
     franka::CartesianPose operator()(const franka::RobotState& robot_state, franka::Duration period) {
         time += period.toSec();
+        
+        motion.setRobotState(robot_state);
+        
         if (time == 0.0) {
             init(robot_state, period);
+        }
+        if (motion.stop_motion) {
+            // if (current_cooldown_iteration == 0) {
+            robot->stop();
+            // }
+            // if (current_cooldown_iteration < cooldown_iterations) {
+            //     current_cooldown_iteration += 1;
+            //     return MotionGenerator::CartesianPose(input_para.current_position, waypoint_has_elbow);
+            //     }
+            return franka::MotionFinished(MotionGenerator::CartesianPose(input_para.current_position, waypoint_has_elbow));
         }
 
         for (auto& reaction : data.reactions) {

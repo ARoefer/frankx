@@ -56,6 +56,9 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
 
     franka::Torques operator()(const franka::RobotState& robot_state, franka::Duration period) {
         time += period.toSec();
+
+        motion.setRobotState(robot_state);
+
         if (time == 0.0) {
             init(robot_state, period);
         }

@@ -1,6 +1,7 @@
 import base64
 import json
 import hashlib
+import time
 from http.client import HTTPSConnection
 import ssl
 from time import sleep
@@ -11,7 +12,7 @@ from .gripper import Gripper as _Gripper
 
 
 class Robot(_Robot):
-    def __init__(self, fci_ip, dynamic_rel=1.0, user=None, password=None, repeat_on_error=True, stop_at_python_signal=True):
+    def __init__(self, fci_ip, dynamic_rel=1.0, user=None, password=None, repeat_on_error=False, stop_at_python_signal=True):
         super().__init__(fci_ip, dynamic_rel=dynamic_rel, repeat_on_error=repeat_on_error, stop_at_python_signal=stop_at_python_signal)
         self.hostname = fci_ip
         self.user = user
@@ -63,9 +64,14 @@ class Robot(_Robot):
 
     def move_async(self, *args) -> Thread:
         p = Thread(target=self.move, args=tuple(args), daemon=True)
+        # p = MoveThread(self.move, tuple(args))
         p.start()
         sleep(0.001)  # Sleep one control cycle
         return p
 
     def get_gripper(self):
-        return _Gripper(self.fci_ip)
+        return _Gripper(self.fci_ip, 0.1)
+
+
+
+

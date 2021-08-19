@@ -24,10 +24,10 @@ struct JointMotionGenerator: public MotionGenerator {
     double time {0.0};
     RobotType* robot;
 
-    JointMotion motion;
+    JointMotion& motion;
     MotionData& data;
 
-    explicit JointMotionGenerator(RobotType* robot, JointMotion motion, MotionData& data): robot(robot), motion(motion), data(data) { }
+    explicit JointMotionGenerator(RobotType* robot, JointMotion& motion, MotionData& data): robot(robot), motion(motion), data(data) { }
 
     void init(const franka::RobotState& robot_state, franka::Duration period) {
         input_para.current_position = robot_state.q_d;
@@ -47,6 +47,7 @@ struct JointMotionGenerator: public MotionGenerator {
 
     franka::JointPositions operator()(const franka::RobotState& robot_state, franka::Duration period) {
         time += period.toSec();
+        motion.setRobotState(robot_state);
         if (time == 0.0) {
             init(robot_state, period);
         }

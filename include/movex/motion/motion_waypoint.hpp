@@ -2,7 +2,7 @@
 
 #include <atomic>
 #include <optional>
-
+#include <franka/robot_state.h>
 #include <affx/affine.hpp>
 #include <movex/waypoint.hpp>
 
@@ -18,8 +18,11 @@ struct WaypointMotion {
 
     bool reload {false};
     bool return_when_finished {true};
+    bool stop_motion {false};
 
     std::vector<Waypoint> waypoints;
+    
+    franka::RobotState current_state;
 
     explicit WaypointMotion() {}
     explicit WaypointMotion(const std::vector<Waypoint>& waypoints): waypoints(waypoints) {}
@@ -38,6 +41,22 @@ struct WaypointMotion {
     void finish() {
         return_when_finished = true;
         reload = true;
+    }
+
+    void stop() {
+        stop_motion = true;
+    }
+
+    void setRobotState(const franka::RobotState& robot_state) {
+        current_state = robot_state;
+    }
+
+    franka::RobotState getRobotState() {
+        return current_state;
+    }
+
+    Affine currentPose(const Affine& frame) {
+        return Affine(current_state.O_T_EE) * frame;
     }
 };
 

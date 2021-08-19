@@ -20,6 +20,7 @@ from _frankx import (
     StopMotion,
     Waypoint,
     WaypointMotion,
+    JointWaypointMotion,
 )
 
 from .gripper import Gripper
