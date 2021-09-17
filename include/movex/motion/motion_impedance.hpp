@@ -120,6 +120,10 @@ public:
         should_finish = true;
     }
 
+    void stop() {
+        should_finish = true;
+    }
+
     void setRobotState(const franka::RobotState& robot_state) {    
         current_state = robot_state;
     }

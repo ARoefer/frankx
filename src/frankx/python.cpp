@@ -144,6 +144,7 @@ PYBIND11_MODULE(_frankx, m) {
         .def("set_spiral_target_motion", &ImpedanceMotion::setSpiralTargetMotion)
         .def("add_force_constraint", (void (ImpedanceMotion::*)(std::optional<double>, std::optional<double>, std::optional<double>)) &ImpedanceMotion::addForceConstraint, py::kw_only(), "x"_a = std::nullopt, "y"_a = std::nullopt, "z"_a = std::nullopt)
         .def("finish", &ImpedanceMotion::finish)
+        .def("stop", &ImpedanceMotion::stop)
         .def("get_robot_state", &ImpedanceMotion::getRobotState)
         .def("current_pose", &ImpedanceMotion::currentPose, "frame"_a = Affine());
 
@@ -235,6 +236,8 @@ PYBIND11_MODULE(_frankx, m) {
         .def_readonly("O_T_EE", &franka::RobotState::O_T_EE)
         .def_readonly("O_T_EE_d", &franka::RobotState::O_T_EE_d)
         .def_readonly("F_T_EE", &franka::RobotState::F_T_EE)
+        .def_readonly("F_T_NE", &franka::RobotState::F_T_NE)
+        .def_readonly("NE_T_EE", &franka::RobotState::NE_T_EE)
         .def_readonly("EE_T_K", &franka::RobotState::EE_T_K)
         .def_readonly("m_ee", &franka::RobotState::m_ee)
         .def_readonly("I_ee", &franka::RobotState::I_ee)
@@ -297,6 +300,7 @@ PYBIND11_MODULE(_frankx, m) {
         .def_readwrite("stop_at_python_signal", &Robot::stop_at_python_signal)
         .def("server_version", &Robot::serverVersion)
         .def("set_default_behavior", &Robot::setDefaultBehavior)
+        .def("set_collision_behavior", (void (Robot::*)(const std::array<double, 7>& ,const std::array<double, 7>& , const std::array<double, 6>& ,const std::array<double, 6>& )) &Robot::setCollisionBehavior)
         .def("set_joint_impedance", &Robot::setJointImpedance)
         .def("set_cartesian_impedance", &Robot::setCartesianImpedance)
         .def("set_K", &Robot::setK)
