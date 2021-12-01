@@ -69,24 +69,34 @@ class Gripper:
     #     results[0] = width
 
 
-class GripperProcess(Process, _Gripper):
+class GripperProcess(Process):
     def __init__(self, fci_ip, gripper_speed, gripper_force, _width, _open_gripper_event, _close_gripper_event):
-        _Gripper.__init__(self, fci_ip, gripper_speed, gripper_force)
+        self.fci_ip = fci_ip
+        self.gripper_speed = gripper_speed
+        self.gripper_force = gripper_force
         self._width = _width
         self._open_gripper_event = _open_gripper_event
         self._close_gripper_event = _close_gripper_event
-        self._width.value = self.read_once().width
+        self._gripper = None
+        self.gripper_state = None
+        self.initialize()
         self.gripper_thread = None
-        self.gripper_state = GripperState.INITIALIZED
         Process.__init__(self)
         self.daemon = True
+
+    def initialize(self):
+        del self._gripper
+        self._gripper = _Gripper(self.fci_ip, self.gripper_speed, self.gripper_force)
+        self._width.value = self._gripper.read_once().width
+        self.gripper_state = GripperState.INITIALIZED
 
     def run(self):
         while 1:
             try:
-                self._width.value = self.read_once().width
+                self._width.value = self._gripper.read_once().width
             except NetworkException:
-                log.warning("libfranka: UDP receive: Timeout. Could not read gripper width.")
+                log.warning("libfranka: UDP receive: Timeout. Could not read gripper width. Restarting Gripper")
+                self.initialize()
             if self._close_gripper_event.is_set():
                 if self.gripper_state != GripperState.CLOSED and (self.gripper_thread is None or (self.gripper_thread is not None and not self.gripper_thread.is_alive())):
                     self.gripper_thread = self.move_async_grasp(0)
@@ -100,11 +110,11 @@ class GripperProcess(Process, _Gripper):
             time.sleep(0.001)
 
     def move_async(self, width) -> Thread:
-        p = Thread(target=self.move_unsafe, args=(width, ), daemon=True)
+        p = Thread(target=self._gripper.move_unsafe, args=(width, ), daemon=True)
         p.start()
         return p
 
     def move_async_grasp(self, width) -> Thread:
-        p = Thread(target=self.clamp, daemon=True)
+        p = Thread(target=self._gripper.clamp, daemon=True)
         p.start()
         return p
