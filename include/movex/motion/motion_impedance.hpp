@@ -56,8 +56,11 @@ public:
     const double translational_stiffness {2000.0};  // in [10, 3000] N/m
     const double rotational_stiffness {200.0};  // in [1, 300] Nm/rad
     const double joint_stiffness {200.0};  // ?
+    const double nullspace_stiffness {10.0};  
 
     Affine target;
+    std::array<double, 7> q_d_nullspace;
+    bool has_nullspace_pose {false};
     bool is_active {false};
     bool should_finish {false};
     franka::RobotState current_state;
@@ -65,6 +68,7 @@ public:
     explicit ImpedanceMotion() { }
     explicit ImpedanceMotion(double joint_stiffness): joint_stiffness(joint_stiffness), type(Type::Joint) { }
     explicit ImpedanceMotion(double translational_stiffness, double rotational_stiffness): translational_stiffness(translational_stiffness), rotational_stiffness(rotational_stiffness), type(Type::Cartesian) { }
+    explicit ImpedanceMotion(double translational_stiffness, double rotational_stiffness, double nullspace_stiffness, std::array<double, 7> q_d_nullspace): translational_stiffness(translational_stiffness), rotational_stiffness(rotational_stiffness), nullspace_stiffness(nullspace_stiffness), type(Type::Cartesian), q_d_nullspace(q_d_nullspace), has_nullspace_pose(true) { }
 
 
     Affine getTarget() const {
@@ -76,6 +80,11 @@ public:
             target = new_target;
         }
         target_motion = ImpedanceMotion::TargetMotion::Exponential;
+    }
+
+    void setNullspacePose(std::array<double, 7> new_q_d_nullspace) {
+        q_d_nullspace = new_q_d_nullspace;
+        has_nullspace_pose = true;
     }
 
     void setLinearRelativeTargetMotion(const Affine& relative_target, double duration) {

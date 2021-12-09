@@ -28,6 +28,8 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
     ImpedanceMotion& motion;
     MotionData& data;
 
+    const double delta_tau_max_{1.0};
+
     explicit ImpedanceMotionGenerator(RobotType* robot, const Affine& frame, ImpedanceMotion& motion, MotionData& data): robot(robot), frame(frame), motion(motion), data(data) {
         if (motion.type == ImpedanceMotion::Type::Joint) {
             throw std::runtime_error("joint impedance is not implemented yet.");
@@ -62,14 +64,20 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         if (time == 0.0) {
             init(robot_state, period);
         }
-
+        
         std::array<double, 7> coriolis_array = model->coriolis(robot_state);
         std::array<double, 42> jacobian_array = model->zeroJacobian(franka::Frame::kEndEffector, robot_state);
+        std::array<double, 49> mass_array = model->mass(robot_state);
+        std::array<double, 7> gravity_array = model->gravity(robot_state);
 
         Eigen::Map<const Eigen::Matrix<double, 7, 1>> coriolis(coriolis_array.data());
         Eigen::Map<const Eigen::Matrix<double, 6, 7>> jacobian(jacobian_array.data());
+        Eigen::Map<const Eigen::Matrix<double, 7, 7>> M(mass_array.data());
+        Eigen::Map<const Eigen::Matrix<double, 7, 1>> g(gravity_array.data());
         Eigen::Map<const Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
         Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
+        Eigen::Map<const Eigen::Matrix<double, 7, 1>> tau(robot_state.tau_J.data());
+        Eigen::Map<const Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
         Eigen::Affine3d transform(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
         Eigen::Vector3d position(transform.translation());
         Eigen::Quaterniond orientation(transform.linear());
@@ -85,6 +93,14 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         error.tail(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
         error.tail(3) << -transform.linear() * error.tail(3);
 
+        // compute forward dynamics
+        Eigen::Matrix<double, 7, 1> ddq;
+        ddq = M.inverse() * (tau - coriolis - g);
+
+        // compute cartesian mass matrix
+        Eigen::Matrix<double, 6, 6> Lambda;
+        Lambda = (jacobian * M.inverse() * jacobian.transpose()).inverse();
+        
         Eigen::VectorXd wrench_cartesian(6), tau_task(7), tau_d(7);
         wrench_cartesian = -stiffness * error - damping * (jacobian * dq);
 
@@ -104,7 +120,22 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         }
 
         tau_task << jacobian.transpose() * wrench_cartesian;
-        tau_d << tau_task + coriolis;
+        tau_d << tau_task + coriolis; 
+        
+        if (motion.has_nullspace_pose) {
+            // compute null space projection matrix
+            Eigen::Matrix<double, 7, 7> N;
+            Eigen::MatrixXd I = Eigen::MatrixXd::Identity(7, 7);
+            N = I - jacobian.transpose() * Lambda * jacobian * M.inverse();
+
+            // nullspace PD control with damping ratio = 1
+            Eigen::VectorXd tau_nullspace(7);
+            Eigen::Map<const Eigen::Matrix<double, 7, 1>> q_d_nullspace(motion.q_d_nullspace.data());
+            tau_nullspace << N * (motion.nullspace_stiffness * (q_d_nullspace - q) - (2.0 * sqrt(motion.nullspace_stiffness)) * dq);
+            tau_d << tau_d + tau_nullspace;
+        }
+        // Saturate torque rate to avoid discontinuities
+        tau_d << saturateTorqueRate(tau_d, tau_J_d);
 
         std::array<double, 7> tau_d_array{};
         Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
@@ -157,6 +188,17 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         }
 
         return franka::Torques(tau_d_array);
+    }
+    Eigen::Matrix<double, 7, 1> saturateTorqueRate(
+        const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
+        const Eigen::Matrix<double, 7, 1>& tau_J_d) {  // NOLINT (readability-identifier-naming)
+        Eigen::Matrix<double, 7, 1> tau_d_saturated{};
+        for (size_t i = 0; i < 7; i++) {
+            double difference = tau_d_calculated[i] - tau_J_d[i];
+        tau_d_saturated[i] =
+            tau_J_d[i] + std::max(std::min(difference, delta_tau_max_), -delta_tau_max_);
+        }
+        return tau_d_saturated;
     }
 };
 
