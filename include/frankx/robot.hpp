@@ -3,7 +3,6 @@
 #ifdef WITH_PYTHON
     #include <Python.h>
 #endif
-
 #include <franka/control_types.h>
 #include <franka/duration.h>
 #include <franka/exception.h>
@@ -24,7 +23,6 @@
 #include <frankx/motion_waypoint_generator.hpp>
 #include <frankx/motion_joint_waypoint_generator.hpp>
 
-
 namespace frankx {
     using namespace movex;
     using Affine = affx::Affine;
@@ -39,6 +37,7 @@ class Robot: public franka::Robot {
 public:
     //! The robot's hostname / IP address
     std::string fci_ip;
+    std::string urdf_path;
 
     // Cartesian constraints
     static constexpr double max_translation_velocity {1.7}; // [m/s]
@@ -52,6 +51,8 @@ public:
     static constexpr double max_elbow_jerk {5000.0}; // [rad/s³]
 
     // Joint constraints
+    static constexpr std::array<double, 7> q_min {{-2.8973,	-1.7628,	-2.8973,	-3.0718,	-2.8973,	-0.0175,	-2.8973}}; // [rad]
+    static constexpr std::array<double, 7> q_max {{2.8973,	1.7628,	2.8973,	-0.0698,	2.8973,	3.7525,	2.8973}}; // [rad]
     static constexpr std::array<double, 7> max_joint_velocity {{2.175, 2.175, 2.175, 2.175, 2.610, 2.610, 2.610}}; // [rad/s]
     static constexpr std::array<double, 7> max_joint_acceleration {{15.0, 7.5, 10.0, 12.5, 15.0, 20.0, 20.0}}; // [rad/s²]
     static constexpr std::array<double, 7> max_joint_jerk {{7500.0, 3750.0, 5000.0, 6250.0, 7500.0, 10000.0, 10000.0}}; // [rad/s^3]
@@ -70,7 +71,7 @@ public:
     bool stop_at_python_signal {true};
 
     //! Connects to a robot at the given FCI IP address.
-    explicit Robot(std::string fci_ip, double dynamic_rel = 1.0, bool repeat_on_error = true, bool stop_at_python_signal = true);
+    explicit Robot(std::string fci_ip, std::string urdf_path, double dynamic_rel = 1.0, bool repeat_on_error = true, bool stop_at_python_signal = true);
 
     void setDefaultBehavior();
     void setDynamicRel(double dynamic_rel);

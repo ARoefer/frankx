@@ -15,10 +15,14 @@ option(USE_PYTHON_EXTENSION "Use python in frankx library" ON)
 
 find_package(Eigen3 3.3.7 REQUIRED NO_MODULE)
 find_package(Franka 0.8 REQUIRED)
+find_package(orocos_kdl REQUIRED)
+find_package(urdfdom REQUIRED)
+find_package(kdl_parser REQUIRED)
 
 message("Found Eigen Version: ${Eigen3_VERSION}")
 message("Found Franka Version: ${Franka_VERSION}")
 
+include_directories(include ${orocos_kdl_INCLUDE_DIRS})
 
 add_subdirectory(affx)
 add_subdirectory(ruckig)
@@ -34,10 +38,11 @@ add_library(frankx
   src/frankx/gripper.cpp
   src/frankx/kinematics.cpp
   src/frankx/robot.cpp
+  src/frankx/jac_dot.cpp
 )
 target_compile_features(frankx PUBLIC cxx_std_17)
 target_include_directories(frankx PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(frankx PUBLIC Franka::Franka Eigen3::Eigen movex)
+target_link_libraries(frankx PUBLIC Franka::Franka Eigen3::Eigen movex ${orocos_kdl_LIBRARIES} ${urdfdom_LIBRARIES} ${kdl_parser_LIBRARIES})
 
 
 if(BUILD_PYTHON_MODULE)

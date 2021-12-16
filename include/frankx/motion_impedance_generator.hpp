@@ -3,10 +3,13 @@
 #include <franka/duration.h>
 #include <franka/robot_state.h>
 
+#include <frankx/jac_dot.hpp>
 #include <movex/robot/motion_data.hpp>
 #include <movex/robot/robot_state.hpp>
 #include <movex/motion/motion_impedance.hpp>
-
+#include <Eigen/Eigenvalues> 
+#include <math.h>
+#include<cmath>
 
 namespace frankx {
     using namespace movex;
@@ -16,7 +19,8 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
     double time {0.0}, motion_init_time {0.0};
     RobotType* robot;
 
-    Eigen::Matrix<double, 6, 6> stiffness, damping;
+    Eigen::Matrix<double, 6, 6> stiffness;
+    Eigen::DiagonalMatrix<double, 6> D_xi;
     Affine initial_affine;
     Eigen::Vector3d position_d;
     Eigen::Quaterniond orientation_d;
@@ -28,6 +32,10 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
     ImpedanceMotion& motion;
     MotionData& data;
 
+    JacDot* jac_dot_solver;
+
+    Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> ges;
+
     const double delta_tau_max_{1.0};
 
     explicit ImpedanceMotionGenerator(RobotType* robot, const Affine& frame, ImpedanceMotion& motion, MotionData& data): robot(robot), frame(frame), motion(motion), data(data) {
@@ -38,16 +46,17 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         stiffness.setZero();
         stiffness.topLeftCorner(3, 3) << motion.translational_stiffness * Eigen::MatrixXd::Identity(3, 3);
         stiffness.bottomRightCorner(3, 3) << motion.rotational_stiffness * Eigen::MatrixXd::Identity(3, 3);
-        damping.setZero();
-        damping.topLeftCorner(3, 3) << 2.0 * sqrt(motion.translational_stiffness) * Eigen::MatrixXd::Identity(3, 3);
-        damping.bottomRightCorner(3, 3) << 2.0 * sqrt(motion.rotational_stiffness) * Eigen::MatrixXd::Identity(3, 3);
-
+        Eigen::Map<const Eigen::Matrix<double, 6, 1>> damping_xi(motion.damping_xi.data());
+        D_xi.diagonal() = damping_xi;
+        
         initial_state = robot->readOnce();
         model = new franka::Model(robot->loadModel());
 
         initial_affine = Affine(initial_state.O_T_EE);
         position_d = Eigen::Vector3d(initial_affine.translation());
         orientation_d = Eigen::Quaterniond(initial_affine.quaternion());
+
+        jac_dot_solver = new JacDot(robot->urdf_path);
     }
 
     void init(const franka::RobotState& robot_state, franka::Duration period) {
@@ -97,12 +106,39 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         Eigen::Matrix<double, 7, 1> ddq;
         ddq = M.inverse() * (tau - coriolis - g);
 
-        // compute cartesian mass matrix
-        Eigen::Matrix<double, 6, 6> Lambda;
-        Lambda = (jacobian * M.inverse() * jacobian.transpose()).inverse();
+        // compute Jdot
+        Eigen::Matrix<double, 6, 7> jdot = jac_dot_solver->jacobian_dot(q, dq);
+        // compute ddx
+        Eigen::Matrix<double, 6, 1> ddx = jacobian * ddq + jdot * dq;        
         
+        
+        // compute cartesian mass matrix
+        Eigen::Matrix<double, 6, 6> lambda;
+        lambda = (jacobian * M.inverse() * jacobian.transpose()).inverse();
+
+        // compute damping with Double Diagonalization Design
+        // see (Cartesian Impedance Control of Redundant Robots: Recent Results with the DLR-Light-Weight-Arms, Albu-Schaffer et al.)
+        ges.compute(stiffness, lambda);
+
+        Eigen::Matrix<double, 6, 6> v;
+        v << ges.eigenvectors().real();
+        for (int i = 0; i < 6; i++) {
+            double x = sqrt((v.col(i).transpose() * lambda * v.col(i)).value());
+            v.col(i) /= x;
+        }
+        Eigen::Matrix<double, 6, 6> K_d0;
+        
+        K_d0 << ges.eigenvalues().real().asDiagonal().toDenseMatrix();
+        Eigen::Matrix<double, 6, 6> Q = v.transpose().inverse();
+        Eigen::Matrix<double, 6, 6> D_d = 2 * Q * D_xi * K_d0.cwiseSqrt() * Q.transpose();
+        
+        // std::cout << "D_d" << std::endl;
+        // std::cout << D_d << std::endl << std::endl;
+
         Eigen::VectorXd wrench_cartesian(6), tau_task(7), tau_d(7);
-        wrench_cartesian = -stiffness * error - damping * (jacobian * dq);
+        wrench_cartesian = - stiffness * error - D_d * (jacobian * dq);
+        // std::cout <<  -lambda * ddx << std::endl;
+        // std::cout <<  wrench_cartesian << std::endl << std::endl;
 
         // Force constraints
         for (const auto force_constraint : motion.force_constraints) {
@@ -118,15 +154,34 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
                 } break;
             }
         }
+        // std::cout << "q" << std::endl;
+        // std::cout << q << std::endl << std::endl;
+        // std::cout << "F" << std::endl;
+        // std::cout << wrench_cartesian << std::endl << std::endl;
+        // std::cout << "J" << std::endl;
+        // std::cout << jacobian << std::endl << std::endl;
+
+        // compute joint limit avoidance torque (Constrained resolved acceleration control for humanoids, Dariush el al.)
+        // Eigen::VectorXd grad_h(7);
+        // for (int i = 0; i < 7; i++) {
+        //     double qmin = robot->q_min[i]; 
+        //     double qmax = robot->q_max[i];
+        //     grad_h(i) = pow(qmax - qmin, 2) * (2 * q(i) - qmax - qmin) / (4 * pow(qmax - q(i), 2) * pow(q(i) - qmin, 2));
+        // }
+        // std::cout << grad_h << std::endl << std::endl;
+        
 
         tau_task << jacobian.transpose() * wrench_cartesian;
         tau_d << tau_task + coriolis; 
         
+        // std::cout << "tau" << std::endl;
+        // std::cout << tau_task << std::endl << std::endl;
+
         if (motion.has_nullspace_pose) {
             // compute null space projection matrix
             Eigen::Matrix<double, 7, 7> N;
             Eigen::MatrixXd I = Eigen::MatrixXd::Identity(7, 7);
-            N = I - jacobian.transpose() * Lambda * jacobian * M.inverse();
+            N = I - jacobian.transpose() * lambda * jacobian * M.inverse();
 
             // nullspace PD control with damping ratio = 1
             Eigen::VectorXd tau_nullspace(7);

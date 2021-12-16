@@ -12,8 +12,8 @@ from .gripper import Gripper as _Gripper
 
 
 class Robot(_Robot):
-    def __init__(self, fci_ip, dynamic_rel=1.0, user=None, password=None, repeat_on_error=False, stop_at_python_signal=True):
-        super().__init__(fci_ip, dynamic_rel=dynamic_rel, repeat_on_error=repeat_on_error, stop_at_python_signal=stop_at_python_signal)
+    def __init__(self, fci_ip, urdf_path, dynamic_rel=1.0, user=None, password=None, repeat_on_error=False, stop_at_python_signal=True):
+        super().__init__(fci_ip, urdf_path, dynamic_rel=dynamic_rel, repeat_on_error=repeat_on_error, stop_at_python_signal=stop_at_python_signal)
         self.hostname = fci_ip
         self.user = user
         self.password = password

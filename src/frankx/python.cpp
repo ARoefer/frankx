@@ -138,7 +138,7 @@ PYBIND11_MODULE(_frankx, m) {
         .def(py::init<>())
         .def(py::init<double>(), "joint_stiffness"_a)
         .def(py::init<double, double>(), "translational_stiffness"_a, "rotational_stiffness"_a)
-        .def(py::init<double, double, double, std::array<double, 7>>(), "translational_stiffness"_a, "rotational_stiffness"_a, "nullspace_stiffness"_a, "q_d_nullspace"_a)
+        .def(py::init<double, double, double, std::array<double, 7>, std::array<double, 6>>(), "translational_stiffness"_a, "rotational_stiffness"_a, "nullspace_stiffness"_a, "q_d_nullspace"_a, "damping_xi"_a)
         .def_property_readonly("is_active", &ImpedanceMotion::isActive)
         .def_property("target", &ImpedanceMotion::getTarget, &ImpedanceMotion::setTarget)
         .def("set_target", &ImpedanceMotion::setTarget, "new_target"_a)
@@ -282,7 +282,7 @@ PYBIND11_MODULE(_frankx, m) {
         .def_readonly("K_F_ext_hat_K", &franka::RobotState::K_F_ext_hat_K);
 
     py::class_<Robot>(m, "Robot")
-        .def(py::init<const std::string &, double, bool, bool>(), "fci_ip"_a, "dynamic_rel"_a = 1.0, "repeat_on_error"_a = true, "stop_at_python_signal"_a = true)
+        .def(py::init<const std::string &, const std::string &, double, bool, bool>(), "fci_ip"_a, "urdf_path"_a, "dynamic_rel"_a = 1.0, "repeat_on_error"_a = true, "stop_at_python_signal"_a = true)
         .def_readonly_static("max_translation_velocity", &Robot::max_translation_velocity)
         .def_readonly_static("max_rotation_velocity", &Robot::max_rotation_velocity)
         .def_readonly_static("max_elbow_velocity", &Robot::max_elbow_velocity)

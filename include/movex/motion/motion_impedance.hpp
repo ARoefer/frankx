@@ -56,7 +56,8 @@ public:
     const double translational_stiffness {2000.0};  // in [10, 3000] N/m
     const double rotational_stiffness {200.0};  // in [1, 300] Nm/rad
     const double joint_stiffness {200.0};  // ?
-    const double nullspace_stiffness {10.0};  
+    const double nullspace_stiffness {10.0};
+    const std::array<double, 6> damping_xi {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
 
     Affine target;
     std::array<double, 7> q_d_nullspace;
@@ -68,7 +69,7 @@ public:
     explicit ImpedanceMotion() { }
     explicit ImpedanceMotion(double joint_stiffness): joint_stiffness(joint_stiffness), type(Type::Joint) { }
     explicit ImpedanceMotion(double translational_stiffness, double rotational_stiffness): translational_stiffness(translational_stiffness), rotational_stiffness(rotational_stiffness), type(Type::Cartesian) { }
-    explicit ImpedanceMotion(double translational_stiffness, double rotational_stiffness, double nullspace_stiffness, std::array<double, 7> q_d_nullspace): translational_stiffness(translational_stiffness), rotational_stiffness(rotational_stiffness), nullspace_stiffness(nullspace_stiffness), type(Type::Cartesian), q_d_nullspace(q_d_nullspace), has_nullspace_pose(true) { }
+    explicit ImpedanceMotion(double translational_stiffness, double rotational_stiffness, double nullspace_stiffness, std::array<double, 7> q_d_nullspace, std::array<double, 6> damping_xi): translational_stiffness(translational_stiffness), rotational_stiffness(rotational_stiffness), nullspace_stiffness(nullspace_stiffness), type(Type::Cartesian), q_d_nullspace(q_d_nullspace), has_nullspace_pose(true), damping_xi(damping_xi) { }
 
 
     Affine getTarget() const {
