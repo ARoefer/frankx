@@ -53,6 +53,7 @@ public:
     // Joint constraints
     static constexpr std::array<double, 7> q_min {{-2.8973,	-1.7628,	-2.8973,	-3.0718,	-2.8973,	-0.0175,	-2.8973}}; // [rad]
     static constexpr std::array<double, 7> q_max {{2.8973,	1.7628,	2.8973,	-0.0698,	2.8973,	3.7525,	2.8973}}; // [rad]
+    static constexpr std::array<double, 7> q_mid {{0.    ,  0.    ,  0.    , -1.5708,  0.    ,  1.8675,  0.    }}; // [rad]
     static constexpr std::array<double, 7> max_joint_velocity {{2.175, 2.175, 2.175, 2.175, 2.610, 2.610, 2.610}}; // [rad/s]
     static constexpr std::array<double, 7> max_joint_acceleration {{15.0, 7.5, 10.0, 12.5, 15.0, 20.0, 20.0}}; // [rad/s²]
     static constexpr std::array<double, 7> max_joint_jerk {{7500.0, 3750.0, 5000.0, 6250.0, 7500.0, 10000.0, 10000.0}}; // [rad/s^3]

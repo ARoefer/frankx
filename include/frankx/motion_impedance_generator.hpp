@@ -154,6 +154,12 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
                 } break;
             }
         }
+
+
+        tau_task << jacobian.transpose() * wrench_cartesian;
+        tau_d << tau_task + coriolis; 
+        
+
         // std::cout << "q" << std::endl;
         // std::cout << q << std::endl << std::endl;
         // std::cout << "F" << std::endl;
@@ -162,20 +168,17 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         // std::cout << jacobian << std::endl << std::endl;
 
         // compute joint limit avoidance torque (Constrained resolved acceleration control for humanoids, Dariush el al.)
-        // Eigen::VectorXd grad_h(7);
-        // for (int i = 0; i < 7; i++) {
-        //     double qmin = robot->q_min[i]; 
-        //     double qmax = robot->q_max[i];
-        //     grad_h(i) = pow(qmax - qmin, 2) * (2 * q(i) - qmax - qmin) / (4 * pow(qmax - q(i), 2) * pow(q(i) - qmin, 2));
-        // }
-        // std::cout << grad_h << std::endl << std::endl;
         
+        
+        // Eigen::VectorXd tau_jl(7);
+        // Eigen::VectorXd tau_new(7);
+        // Eigen::Map<const Eigen::Matrix<double, 7, 1>> q_mid(robot->q_mid.data());
+        // tau_jl << (10 * (q_mid - q) - (2.0 * sqrt(10)) * dq);
 
-        tau_task << jacobian.transpose() * wrench_cartesian;
-        tau_d << tau_task + coriolis; 
-        
-        // std::cout << "tau" << std::endl;
-        // std::cout << tau_task << std::endl << std::endl;
+        // tau_new << tau_jl.cwiseProduct(h) + tau_task.cwiseProduct(ones - h);
+        // // std::cout << "tau_new" << std::endl;
+        // std::cout <<  << std::endl << std::endl;
+
 
         if (motion.has_nullspace_pose) {
             // compute null space projection matrix
@@ -189,6 +192,33 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
             tau_nullspace << N * (motion.nullspace_stiffness * (q_d_nullspace - q) - (2.0 * sqrt(motion.nullspace_stiffness)) * dq);
             tau_d << tau_d + tau_nullspace;
         }
+
+        // compute forward dynamics for desired torque
+        // Eigen::VectorXd tau_new(7);
+        // tau_new = tau_d;
+        Eigen::Matrix<double, 7, 1> ddq_d;
+        ddq_d = M.inverse() * (tau_d - coriolis - g);
+        for (int i = 0; i < 7; i++) {
+            double qmin = robot->q_min[i]; 
+            double qmax = robot->q_max[i];
+            double beta = (qmax - qmin) * 0.1;
+            double q_lbuf = qmin + beta;
+            double q_ubuf = qmax - beta;
+            double h = 1.0;
+            if (q_ubuf < q[i] && ddq_d(i) > 0) {
+                h = 0.5 - 0.5 * sin((M_PI / beta ) * (q[i] - q_ubuf) - (M_PI / 2));
+            } else if (q[i] < q_lbuf && ddq_d(i) < 0) {
+                h = 0.5 + 0.5 * sin((M_PI / beta ) * (q[i] - q_lbuf) + (M_PI / 2));
+            }
+            tau_d(i) *= h;
+            // std::cout << h << std::endl;
+        }
+        // std::cout << "tau" << std::endl;
+        // std::cout << tau_d << std::endl << std::endl;
+
+        // std::cout << "tau_clipped" << std::endl;
+        // std::cout << tau_new << std::endl << std::endl;
+
         // Saturate torque rate to avoid discontinuities
         tau_d << saturateTorqueRate(tau_d, tau_J_d);
 

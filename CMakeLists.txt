@@ -22,7 +22,7 @@ find_package(kdl_parser REQUIRED)
 message("Found Eigen Version: ${Eigen3_VERSION}")
 message("Found Franka Version: ${Franka_VERSION}")
 
-include_directories(include ${orocos_kdl_INCLUDE_DIRS})
+include_directories(include ${orocos_kdl_INCLUDE_DIRS} ${kdl_parser_INCLUDE_DIRS})
 
 add_subdirectory(affx)
 add_subdirectory(ruckig)
