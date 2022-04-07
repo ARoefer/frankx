@@ -107,7 +107,7 @@ class GripperProcess(Process):
                     self.gripper_thread = self.move_async(0.085)
                     self.gripper_state = GripperState.OPEN
                 self._open_gripper_event.clear()
-            time.sleep(0.001)
+            time.sleep(0.01)
 
     def move_async(self, width) -> Thread:
         p = Thread(target=self._gripper.move_unsafe, args=(width, ), daemon=True)

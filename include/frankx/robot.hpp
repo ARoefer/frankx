@@ -57,6 +57,7 @@ public:
     static constexpr std::array<double, 7> max_joint_velocity {{2.175, 2.175, 2.175, 2.175, 2.610, 2.610, 2.610}}; // [rad/s]
     static constexpr std::array<double, 7> max_joint_acceleration {{15.0, 7.5, 10.0, 12.5, 15.0, 20.0, 20.0}}; // [rad/s²]
     static constexpr std::array<double, 7> max_joint_jerk {{7500.0, 3750.0, 5000.0, 6250.0, 7500.0, 10000.0, 10000.0}}; // [rad/s^3]
+    static constexpr std::array<double, 7> max_torque {{87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0}}; // [Nm]
 
     static constexpr size_t degrees_of_freedoms {7};
     static constexpr double control_rate {0.001}; // [s]

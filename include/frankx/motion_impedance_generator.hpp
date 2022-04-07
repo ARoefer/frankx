@@ -136,7 +136,7 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         // std::cout << D_d << std::endl << std::endl;
 
         Eigen::VectorXd wrench_cartesian(6), tau_task(7), tau_d(7);
-        wrench_cartesian = - stiffness * error - D_d * (jacobian * dq);
+        wrench_cartesian = -lambda * jdot * dq - stiffness * error - D_d * (jacobian * dq);
         // std::cout <<  -lambda * ddx << std::endl;
         // std::cout <<  wrench_cartesian << std::endl << std::endl;
 
@@ -280,8 +280,9 @@ struct ImpedanceMotionGenerator: public MotionGenerator {
         Eigen::Matrix<double, 7, 1> tau_d_saturated{};
         for (size_t i = 0; i < 7; i++) {
             double difference = tau_d_calculated[i] - tau_J_d[i];
-        tau_d_saturated[i] =
-            tau_J_d[i] + std::max(std::min(difference, delta_tau_max_), -delta_tau_max_);
+            tau_d_saturated[i] = tau_J_d[i] + std::max(std::min(difference, delta_tau_max_), -delta_tau_max_);
+            // limit the torques
+            tau_d_saturated[i] = std::max(std::min(tau_d_saturated[i], robot->max_torque[i]), -robot->max_torque[i]);
         }
         return tau_d_saturated;
     }

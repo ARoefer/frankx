@@ -304,6 +304,7 @@ PYBIND11_MODULE(_frankx, m) {
         .def("server_version", &Robot::serverVersion)
         .def("set_default_behavior", &Robot::setDefaultBehavior)
         .def("set_collision_behavior", (void (Robot::*)(const std::array<double, 7>& ,const std::array<double, 7>& , const std::array<double, 6>& ,const std::array<double, 6>& )) &Robot::setCollisionBehavior)
+        .def("set_guiding_mode", (void (Robot::*)(const std::array<bool, 6>& , bool)) &Robot::setGuidingMode)
         .def("set_joint_impedance", &Robot::setJointImpedance)
         .def("set_cartesian_impedance", &Robot::setCartesianImpedance)
         .def("set_K", &Robot::setK)
