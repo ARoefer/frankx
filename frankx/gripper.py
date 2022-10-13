@@ -98,14 +98,26 @@ class GripperProcess(Process):
                 log.warning("libfranka: UDP receive: Timeout. Could not read gripper width. Restarting Gripper")
                 self.initialize()
             if self._close_gripper_event.is_set():
-                if self.gripper_state != GripperState.CLOSED and (self.gripper_thread is None or (self.gripper_thread is not None and not self.gripper_thread.is_alive())):
+                if self.gripper_state != GripperState.CLOSED: # and \
+                    if self.gripper_thread is not None:
+                        self.gripper_thread = None
+                    # (self.gripper_thread is None or not self.gripper_thread.is_alive()):
                     self.gripper_thread = self.move_async_grasp(0)
+                    # print('Sending gripper to 0')
                     self.gripper_state = GripperState.CLOSED
+                # else:
+                #     print(f'Got request to close but refused:\n  State: {self.gripper_state}\n  Thread: {self.gripper_thread}\n Is Alive: {self.gripper_thread.is_alive() if self.gripper_thread is not None else "N/A"}')
                 self._close_gripper_event.clear()
             elif self._open_gripper_event.is_set():
-                if self.gripper_state != GripperState.OPEN and (self.gripper_thread is None or (self.gripper_thread is not None and not self.gripper_thread.is_alive())):
+                if self.gripper_state != GripperState.OPEN: 
+                    if self.gripper_thread is not None:
+                        self.gripper_thread = None
+                    # ( or not self.gripper_thread.is_alive()):
                     self.gripper_thread = self.move_async(0.085)
+                    # print('Sending gripper to 0.085')
                     self.gripper_state = GripperState.OPEN
+                # else:
+                #     print(f'Got request to open but refused:\n  State: {self.gripper_state}\n  Thread: {self.gripper_thread}\n Is Alive: {self.gripper_thread.is_alive() if self.gripper_thread is not None else "N/A"}')
                 self._open_gripper_event.clear()
             time.sleep(0.01)
 
